@@ -16,6 +16,10 @@ describe('store', function() {
     it('gets the state', function() {
       expect(store.getState()).to.eql({});
     });
+
+    it('caches the result', function() {
+      expect(store.getState()).to.equal(store.getState());
+    });
   });
 
   describe('actions', function() {
@@ -31,11 +35,25 @@ describe('store', function() {
         });
         return todos.slice(0);
       })
+
+      collection.use('DELETE /{id}', function(todos, req) {
+        var todopos = _.findIndex(todos, {
+          id: req.params.id
+        })
+        todos.splice(todopos, 1);
+        return todos.slice(0);
+      })
     });
 
     it('creates a todo', function() {
       store.dispatch('CREATE /todos', 'buy milk');
       expect(store.getState().todos.length).to.eql(1);
+    });
+
+    it('delete a todo', function() {
+      store.dispatch('CREATE /todos', 'buy milk');
+      var todos = store.getState().todos;
+      store.dispatch('DELETE ' + todos[0].links.self);
     });
 
   });

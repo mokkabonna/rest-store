@@ -111,7 +111,7 @@ function createStore(Model, initialState) {
 
   var paths = {};
   var mountPoints = {};
-  var cache = {};
+  var cachedResult;
   var hasMutated = true;
   var subscribers = [];
 
@@ -127,9 +127,16 @@ function createStore(Model, initialState) {
     //   paths[path] = handler;
     // },
     getState: function() {
-      return _.reduce(paths, function(all, child, path) {
-        return _.set(all, mountPoints[path], child.getState());
+      if(!hasMutated && cachedResult) return cachedResult;
+
+      cachedResult = _.reduce(paths, function(all, child, path) {
+        return _.set(all, mountPoints[path], child.getState().map(function(data) {
+          return expandLinks(data, path);
+        }));
       }, {});
+
+      hasMutated = false;
+      return cachedResult;
     },
     subscribe: function(func) {
       subscribers.push(func);
@@ -180,13 +187,10 @@ function createStore(Model, initialState) {
     if (_.isFunction(result.then)) {
 
       var newRes = result.then(function(res) {
-        newRes.isPending = false;
         return res.map(function(data) {
           return expandLinks(data, path);
         });
       });
-
-      newRes.isPending = true;
 
       return newRes;
     }

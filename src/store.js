@@ -1,6 +1,5 @@
 var _ = require('lodash');
 var uriTemplates = require('uri-templates');
-var uuidV4 = require('uuid/v4');
 
 function createCollection(Model) {
 
@@ -41,9 +40,9 @@ function createCollection(Model) {
       if (!hasMutated && cachedResult) return cachedResult;
 
       hasMutated = false;
-      cachedResult = internalState;
+      cachedResult = internalState.map(createRepresentation);
 
-      return internalState;
+      return cachedResult;
     },
     dispatch: dispatch
   };
@@ -55,12 +54,9 @@ function createCollection(Model) {
   }
 
   function createRepresentation(data, index) {
-    // var mod = new Model(data);
-    data.links = {
-      self: '/' + data.id
-    };
+    var mod = new Model(data);
 
-    return data;
+    return mod;
   }
 
   function dispatch(request, payload) {
@@ -79,16 +75,18 @@ function createCollection(Model) {
         params: uriTemplates(action.template).fromUri(url)
       });
 
+      if(result === undefined) throw new Error('You need to return the new state of the collection.');
+
       if (_.isFunction(result.then)) {
         return result.then(function(res) {
-          internalState = res.map(createRepresentation);
+          internalState = res;
 
           if (!isGet) {
             hasMutated = true;
 
             notify();
           }
-          return internalState;
+          return internalState.map(createRepresentation);
         });
       }
 
@@ -98,7 +96,7 @@ function createCollection(Model) {
         notify();
       }
 
-      return result.map(createRepresentation);
+      return internalState.map(createRepresentation);
     } else {
       throw new Error('No controller found');
     }
